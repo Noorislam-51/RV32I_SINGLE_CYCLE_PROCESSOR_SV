@@ -3,12 +3,12 @@ import risc_pkg ::*;
 module alu(
   input logic [31:0]alu_a,
   input logic [31:0]alu_b,
-  input logic alu_opcode alu_op,
+  input logic alu_opcode_t alu_op,
   output  logic [31:0]alu_res
 );
 
-logic signed_a = alu_a;
-logic signed_b = alu_b;
+logic [31:0]signed_a = alu_a;
+logic [31:0]signed_b = alu_b;
 
 always_comb begin 
   case (alu_op)
