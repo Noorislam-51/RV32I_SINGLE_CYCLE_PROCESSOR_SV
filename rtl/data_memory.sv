@@ -10,18 +10,17 @@ parameter DATA WIDTH= 8)(
   input dmem_req,
   input dmem_zero_extend,
 
-  ouput [31:0]dmem_rd_data
+  output [31:0]dmem_rd_data
 );
 
 logic [DATA_WIDTH-1:0] mem [0:(2**ADDR_WIDTH)-1];
 //WRITE 
   always_ff @(posedge clk)begin 
     if(dmem_req && dmem_wr_en)begin
-      case (dmem_data_size)
-        BYTE : mem[dmem_addr]<= dmem_wr_data[7:0],
-        HALF_WORD : {mem[dmem_addr+1],mem[dmem_addr]} <= dmem_wr_data[15:0],
-        WORD : {mem[dmem_addr+3],mem[dmem_addr+2],mem[dmem_addr+1],mem[dmem_addr]} <= dmem_wr_data[31:0],
-        BYTE : mem[dmem_addr]<= dmem_wr_data[7:0],
+      case (dmem_size)
+        BYTE : mem[dmem_addr]<= dmem_wr_data[7:0];
+        HALF_WORD : {mem[dmem_addr+1],mem[dmem_addr]} <= dmem_wr_data[15:0];
+        WORD : {mem[dmem_addr+3],mem[dmem_addr+2],mem[dmem_addr+1],mem[dmem_addr]} <= dmem_wr_data[31:0];
       endcase
     end
   end
@@ -43,8 +42,9 @@ logic [DATA_WIDTH-1:0] mem [0:(2**ADDR_WIDTH)-1];
         WORD:      dmem_rd_data = {mem[dmem_addr+3], mem[dmem_addr+2], mem[dmem_addr+1], mem[dmem_addr]}; // LW
         default:   dmem_rd_data = 32'd0;
       endcase
-      else begin
-        dmem_rd_data = 32'd0;
+    end
+    else begin
+      dmem_rd_data = 32'd0;
     end
   end 
 

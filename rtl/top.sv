@@ -1,10 +1,10 @@
-import risc_pkg ::*;
+import riscv_pkg ::*;
 
 module top#(
-  parameter  RESET_PC = 32'h0000;
+  parameter  RESET_PC = 32'h00000
 )(
   input clk,
-  input reset_n,
+  input reset_n
 );
 
 
@@ -48,7 +48,7 @@ logic [31:0] immediate;
 logic        r_type, i_type, s_type, b_type, u_type, j_type;
 
 logic [31:0] alu_a, alu_b, alu_res;
-alu_op_t     alu_op;
+alu_opcode_t     alu_op;
 
 wb_src_t     rf_wr_data_sel;
 logic        rf_wr_en;
@@ -79,7 +79,7 @@ end
 // ---------------------------------------------------------------------
 // Instruction Memory
 // ---------------------------------------------------------------------
-instruction_memory u_instruction_memory (
+imem u_instruction_memory (
     .imem_req  (imem_req),
     .imem_addr (imem_addr),
     .imem_data (imem_data)
@@ -130,7 +130,7 @@ always_comb begin
     endcase
 end
 
-register_file u_register_file (
+reg_file u_register_file (
     .clk        (clk),
     .reset_n    (reset_n),
     .rs1_addr   (rs1_addr),
@@ -203,7 +203,7 @@ data_memory u_data_memory (
     .clk              (clk),
     .dmem_req         (dmem_req),
     .dmem_wr_en       (dmem_wr_en),
-    .dmem_data_size   (dmem_size),
+    .dmem_size        (dmem_size),
     .dmem_addr        (dmem_addr),
     .dmem_wr_data     (dmem_wr_data),
     .dmem_zero_extend (dmem_zero_extend),

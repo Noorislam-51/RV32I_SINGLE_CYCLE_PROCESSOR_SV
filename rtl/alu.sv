@@ -1,9 +1,9 @@
-import risc_pkg ::*;
+import riscv_pkg ::*;
 
 module alu(
   input logic [31:0]alu_a,
   input logic [31:0]alu_b,
-  input logic alu_opcode_t alu_op,
+  input alu_opcode_t alu_op,
   output  logic [31:0]alu_res
 );
 
@@ -20,8 +20,9 @@ always_comb begin
   OR  : alu_res = alu_a | alu_b;
   AND  : alu_res = alu_a & alu_b;
   XOR  : alu_res = alu_a ^ alu_b;
-  SLTU  : alu_res = alu_a <alu_b ? 32'b1 : 32b'0;
-  SLT  : alu_res = signed_a <signed_b? 32'b1 : 3  2b'0;
+  SLTU  : alu_res = alu_a <alu_b ? 32'b1 : 32'b0;
+  SLT  : alu_res = signed_a <signed_b? 32'b1 : 32'b0;
+  default  : alu_res = 32'b0;
   endcase
 end
 

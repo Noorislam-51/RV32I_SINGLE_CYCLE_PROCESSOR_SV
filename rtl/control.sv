@@ -1,4 +1,4 @@
-import risc_pkg ::*;
+import riscv_pkg ::*;
 
 module branch_control(
   input logic [31:0]opr_a,
@@ -22,7 +22,7 @@ always_comb begin
     B_BGEU : taken = (opr_a >= opr_b);
   endcase
 
-  assign branch_taken = taken & is_branch_taken;
+  assign branch_taken = taken & is_b_type;
 end
 
 endmodule
@@ -96,8 +96,7 @@ assign opcode_i = {opcode[4], funct3};
 always_comb begin
     ctrl_i = '0;
     ctrl_i.rf_write_enable = 1'b1;
-    ctrl_i.alu_src_b_select = 1'b1; // // 3. Select immediate as ALU input B 
-    Select the immediate value as the ALU's second input instead of the value from register rs2.
+    ctrl_i.alu_src_b_select = 1'b1; // // 3. Select immediate as ALU input B Select the immediate value as the ALU's second input instead of the value from register rs2.
 
     case (opcode_i)
         I_ADDI        : ctrl_i.alu_op = ADD;

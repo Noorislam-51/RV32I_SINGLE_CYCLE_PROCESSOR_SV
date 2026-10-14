@@ -4,7 +4,7 @@ module fetch (
   input logic [31:0]pc,
   output logic imem_req,
   output logic [31:0]imem_addr,
-  output logic [31:0]instruction,
+  output logic [31:0]instruction
 );
 
 logic reg_req;

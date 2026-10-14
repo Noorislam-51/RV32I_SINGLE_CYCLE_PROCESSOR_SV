@@ -1,4 +1,4 @@
-package risc_pkg;
+package riscv_pkg;
 
 //RISC-V Opcodes
 
