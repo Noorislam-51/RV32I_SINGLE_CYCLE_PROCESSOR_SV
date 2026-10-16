@@ -1,30 +1,30 @@
-import riscv_pkg ::*;
-
-module alu(
-  input logic [31:0]alu_a,
-  input logic [31:0]alu_b,
-  input alu_opcode_t alu_op,
-  output  logic [31:0]alu_res
+module alu
+  import riscv_pkg::*;
+(
+  input  logic [31:0] alu_a,
+  input  logic [31:0] alu_b,
+  input  alu_opcode_t alu_op,
+  output logic [31:0] alu_res
 );
 
-logic [31:0]signed_a = alu_a;
-logic [31:0]signed_b = alu_b;
+// $signed() casts are applied inline. The old
+//   logic [31:0] signed_a = alu_a;
+// was a one-time initializer (not a continuous assign) and was unsigned anyway.
 
-always_comb begin 
+always_comb begin
   case (alu_op)
-  ADD  : alu_res = alu_a + alu_b;
-  SUB  : alu_res = alu_a - alu_b;
-  SLL  : alu_res = alu_a << alu_b[4:0];
-  SRL  : alu_res = alu_a >> alu_b[4:0];
-  SRA  : alu_res = alu_a >>>alu_b[4:0];
-  OR  : alu_res = alu_a | alu_b;
-  AND  : alu_res = alu_a & alu_b;
-  XOR  : alu_res = alu_a ^ alu_b;
-  SLTU  : alu_res = alu_a <alu_b ? 32'b1 : 32'b0;
-  SLT  : alu_res = signed_a <signed_b? 32'b1 : 32'b0;
-  default  : alu_res = 32'b0;
+    ALU_ADD  : alu_res = alu_a + alu_b;
+    ALU_SUB  : alu_res = alu_a - alu_b;
+    ALU_SLL  : alu_res = alu_a << alu_b[4:0];
+    ALU_SRL  : alu_res = alu_a >> alu_b[4:0];
+    ALU_SRA  : alu_res = $signed(alu_a) >>> alu_b[4:0];          // sign-fill needs a signed operand
+    ALU_OR   : alu_res = alu_a | alu_b;
+    ALU_AND  : alu_res = alu_a & alu_b;
+    ALU_XOR  : alu_res = alu_a ^ alu_b;
+    ALU_SLTU : alu_res = (alu_a < alu_b)                   ? 32'd1 : 32'd0;
+    ALU_SLT  : alu_res = ($signed(alu_a) < $signed(alu_b)) ? 32'd1 : 32'd0;
+    default  : alu_res = 32'd0;
   endcase
 end
-
 
 endmodule

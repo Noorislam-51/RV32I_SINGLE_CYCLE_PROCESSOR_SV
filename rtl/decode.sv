@@ -1,6 +1,6 @@
-import riscv_pkg::*;
-
-module decode (
+module decode
+  import riscv_pkg::*;
+(
     input  logic [31:0] instruction,
     output logic [6:0]  opcode,
     output logic [6:0]  funct7,
@@ -23,7 +23,6 @@ logic [31:0] imm_b_type;
 logic [31:0] imm_u_type;
 logic [31:0] imm_j_type;
 
-// Fixed port names (added _addr)
 assign opcode   = instruction[6:0];
 assign rd_addr  = instruction[11:7];
 assign funct3   = instruction[14:12];
@@ -37,7 +36,7 @@ assign imm_b_type = {{20{instruction[31]}}, instruction[7], instruction[30:25], 
 assign imm_u_type = {instruction[31:12], 12'b0};
 assign imm_j_type = {{12{instruction[31]}}, instruction[19:12], instruction[20], instruction[30:21], 1'b0};
 
-always_comb begin 
+always_comb begin
     r_type = 1'b0;
     s_type = 1'b0;
     i_type = 1'b0;
@@ -46,28 +45,29 @@ always_comb begin
     j_type = 1'b0;
 
     case (opcode)
-        OPCODE_R_TYPE : r_type = 1'b1;  // Fixed comma to semicolon
-        
+        OPCODE_R_TYPE : r_type = 1'b1;
+
         OPCODE_I_LOAD,
         OPCODE_I_ALU,
         OPCODE_I_JALR : i_type = 1'b1;
-        
+
         OPCODE_S_TYPE : s_type = 1'b1;
         OPCODE_B_TYPE : b_type = 1'b1;
-        
+
         OPCODE_LUI,
         OPCODE_AUIPC  : u_type = 1'b1;
-        
+
         OPCODE_JAL    : j_type = 1'b1;
-        
-        default       : ; 
+
+        default       : ;   // unknown opcode: all type flags stay 0
     endcase
 end
 
-assign immediate = r_type ? 32'd0 :
-                   i_type ? imm_i_type :
+assign immediate = i_type ? imm_i_type :
                    s_type ? imm_s_type :
-                   b_type ? imm_b_type : 
+                   b_type ? imm_b_type :
                    u_type ? imm_u_type :
-                            imm_j_type;
+                   j_type ? imm_j_type :
+                            32'd0;      // R-type / unknown
+
 endmodule

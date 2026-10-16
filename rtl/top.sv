@@ -1,20 +1,19 @@
-import riscv_pkg ::*;
-
-module top#(
-  parameter  RESET_PC = 32'h00000
+module top
+  import riscv_pkg::*;
+#(
+  parameter RESET_PC = 32'h0000_0000
 )(
-  input clk,
-  input reset_n
+  input logic clk,
+  input logic reset_n
 );
-
 
 
 // ---------------------------------------------------------------------
 // Instruction Memory Interface
 // ---------------------------------------------------------------------
-  logic imem_req;
-  logic [31:0]imem_addr;
-  logic [31:0]imem_data;
+logic        imem_req;
+logic [31:0] imem_addr;
+logic [31:0] imem_data;
 
 // ---------------------------------------------------------------------
 // Data Memory Interface
@@ -35,7 +34,6 @@ logic [31:0] pc, next_pc, next_seq_pc;
 logic        pc_sel, reset_seen;
 logic        branch_taken;
 
-
 logic [31:0] instruction;
 logic [6:0]  opcode;
 logic [2:0]  funct3;
@@ -48,7 +46,7 @@ logic [31:0] immediate;
 logic        r_type, i_type, s_type, b_type, u_type, j_type;
 
 logic [31:0] alu_a, alu_b, alu_res;
-alu_opcode_t     alu_op;
+alu_opcode_t alu_op;
 
 wb_src_t     rf_wr_data_sel;
 logic        rf_wr_en;
@@ -73,7 +71,6 @@ always_ff @(posedge clk or negedge reset_n) begin
     else if (reset_seen)
         pc <= next_pc;
 end
-  
 
 
 // ---------------------------------------------------------------------
@@ -127,6 +124,7 @@ always_comb begin
         WB_SRC_MEM : wr_data = dmem_rd_data;
         WB_SRC_IMM : wr_data = immediate;
         WB_SRC_PC  : wr_data = next_seq_pc;
+        default    : wr_data = alu_res;
     endcase
 end
 
@@ -194,9 +192,7 @@ alu u_alu (
 // ---------------------------------------------------------------------
 // Data Memory
 // ---------------------------------------------------------------------
-// We dont need to use assign but its easier
-// becouse now we give meaning to the Input
-assign dmem_addr    = alu_res;
+assign dmem_addr    = alu_res;     // rs1 + imm for loads/stores
 assign dmem_wr_data = rs2_data;
 
 data_memory u_data_memory (

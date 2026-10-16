@@ -1,33 +1,37 @@
-
 module reg_file (
-  input rf_wr_en,clk,rst_n,
-  input [4:0]rs1_addr,
-  input [4:0]rs2_addr,
-  input [4:0]rd_addr,
-  input [31:0]wr_data,
-  output [31:0]rs1_data,
-  output [31:0]rs2_data
+  input  logic        clk,
+  input  logic        reset_n,      // was "rst_n" (top connects .reset_n)
+  input  logic        rf_wr_en,     // now actually used
+  input  logic [4:0]  rs1_addr,
+  input  logic [4:0]  rs2_addr,
+  input  logic [4:0]  rd_addr,
+  input  logic [31:0] wr_data,
+  output logic [31:0] rs1_data,
+  output logic [31:0] rs2_data
 );
-// 32 * 32
-logic [31:0]regs [31:0];
 
+// 32 registers x 32 bits
+logic [31:0] regs [0:31];
 
-//rd and wr logic
-always@(posedge clk , negedge rst_n)
-begin 
-  if (!rst_n)begin
-    for(int i = 0;i<32;i++)begin
+// ---------------------------------------------------------------
+// Write logic
+//  - only when rf_wr_en is high (stores / branches must NOT write)
+//  - never to x0 (x0 is hard-wired to zero in RISC-V)
+// ---------------------------------------------------------------
+always_ff @(posedge clk or negedge reset_n) begin
+  if (!reset_n) begin
+    for (int i = 0; i < 32; i++)
       regs[i] <= 32'b0;
-    end
   end
-  else
-    begin 
-      regs[rd_addr] <= wr_data;
-    end
+  else if (rf_wr_en && (rd_addr != 5'd0)) begin
+    regs[rd_addr] <= wr_data;
+  end
 end
 
-// read logic
-assign rs1_data = regs[rs1_addr];
-assign rs2_data = regs[rs2_addr];
+// ---------------------------------------------------------------
+// Read logic (asynchronous); x0 always reads 0
+// ---------------------------------------------------------------
+assign rs1_data = (rs1_addr == 5'd0) ? 32'b0 : regs[rs1_addr];
+assign rs2_data = (rs2_addr == 5'd0) ? 32'b0 : regs[rs2_addr];
 
-endmodule 
+endmodule
