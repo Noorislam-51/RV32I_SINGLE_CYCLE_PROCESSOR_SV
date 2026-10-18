@@ -1,9 +1,10 @@
 module data_memory
   import riscv_pkg::*;
 #(
-  //parameter ADDR_WIDTH = 16,   // 2^16 = 64KB
+
   parameter ADDR_WIDTH = 6,      // 2^6  = 64 bytes (instead of 2^16)
   parameter DATA_WIDTH = 8       // byte-addressed
+  //Total storage  64 locations × 1 byte = 64 bytes = 512 bits.
 )(
   input  logic        clk,
   input  logic [31:0] dmem_wr_data,
@@ -13,10 +14,12 @@ module data_memory
   input  logic        dmem_req,
   input  logic        dmem_zero_extend,
 
-  output logic [31:0] dmem_rd_data       // "logic" because it is driven from always_comb
+  output logic [31:0] dmem_rd_data      
 );
 
-logic [DATA_WIDTH-1:0] mem [0:(2**ADDR_WIDTH)-1];
+//  each row contain 1 byte only and total 64 row
+
+logic [DATA_WIDTH-1:0] mem [0:(2**ADDR_WIDTH)-1]; //7:0] 2^6=64 byte
 
 // Only the low ADDR_WIDTH bits index the array; +1/+2/+3 wrap inside it
 // instead of going out of range.

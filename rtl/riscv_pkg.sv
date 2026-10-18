@@ -1,5 +1,17 @@
 package riscv_pkg;
 
+// Category	    Instructions listed	                                       Count
+// -------------------------------------------------------------------------------
+// R-type	    ADD, SUB, SLL, SLT, SLTU, XOR, SRL, SRA, OR, AND	        10
+// I-type       ALU	ADDI, SLLI, SLTI, SLTIU, XORI, SRLI, SRAI, ORI, ANDI	9
+// Loads	    LB, LH, LW, LBU, LHU	                                    5
+// Stores	    SB, SH, SW	                                                3
+// Branches	    BEQ, BNE, BLT, BGE, BLTU, BGEU	                            6
+// U-type	    LUI, AUIPC	                                                2
+// Jumps	    JAL, JALR	                                                2
+// ---------------------------------------------------------------------------
+// Total		                                                        37
+// ---------------------------------------------------------------------------
 //RISC-V Opcodes
 
     typedef enum logic [6:0] {

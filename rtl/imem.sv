@@ -5,11 +5,13 @@ module imem #(
   input  logic        imem_req,
   output logic [31:0] imem_data
 );
+//  **each row contain 4 byte only and total 64 row**
 
 // One 32-bit word per entry, so machinecode.mem (one 32-bit hex word
 // per line) loads directly. The old version used 8-bit entries, so
 // $readmemh truncated every instruction to its lowest byte.
-logic [31:0] mem [0:(2**ADDR_WIDTH)-1];
+
+logic [31:0] mem [0:(2**ADDR_WIDTH)-1]; //logic [31:0] mem [0:63];
 
 initial begin
     for (int i = 0; i < 2**ADDR_WIDTH; i++)

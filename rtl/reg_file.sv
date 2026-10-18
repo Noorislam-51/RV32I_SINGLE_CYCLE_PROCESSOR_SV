@@ -1,7 +1,7 @@
 module reg_file (
   input  logic        clk,
-  input  logic        reset_n,      // was "rst_n" (top connects .reset_n)
-  input  logic        rf_wr_en,     // now actually used
+  input  logic        reset_n,      
+  input  logic        rf_wr_en,     
   input  logic [4:0]  rs1_addr,
   input  logic [4:0]  rs2_addr,
   input  logic [4:0]  rd_addr,
@@ -9,6 +9,8 @@ module reg_file (
   output logic [31:0] rs1_data,
   output logic [31:0] rs2_data
 );
+
+//  each row contain 4 byte only and total 32 row
 
 // 32 registers x 32 bits
 logic [31:0] regs [0:31];
