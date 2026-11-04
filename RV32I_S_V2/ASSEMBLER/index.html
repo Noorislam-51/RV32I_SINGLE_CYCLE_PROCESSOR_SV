@@ -1,0 +1,282 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <title>RISC-V Lab</title>
+  <style>
+    body {
+      font-family: system-ui, sans-serif;
+      background: #f6f8fb;
+      margin: 0;
+      color: #1a2b3c
+    }
+
+    header {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+      padding: 14px 24px;
+      background: #fff;
+      border-bottom: 1px solid #e3e8ee;
+      flex-wrap: wrap
+    }
+
+    header h1 {
+      font-size: 20px;
+      margin: 0 auto 0 0
+    }
+
+    button,
+    select,
+    input {
+      padding: 9px 14px;
+      border-radius: 8px;
+      border: 1px solid #cfd8e3;
+      background: #fff;
+      font-size: 14px;
+      cursor: pointer
+    }
+
+    button.primary {
+      background: #0ea5e9;
+      color: #fff;
+      border: none
+    }
+
+    #status {
+      padding: 10px 24px;
+      font-size: 14px
+    }
+
+    .ok {
+      color: #067647
+    }
+
+    .err {
+      color: #b42318
+    }
+
+    main {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 20px;
+      padding: 0 24px 24px
+    }
+
+    .card {
+      background: #fff;
+      border: 1px solid #e3e8ee;
+      border-radius: 12px;
+      overflow: hidden
+    }
+
+    .card h2 {
+      font-size: 12px;
+      letter-spacing: .08em;
+      color: #64748b;
+      margin: 0;
+      padding: 14px 18px;
+      border-bottom: 1px solid #e3e8ee
+    }
+
+    textarea {
+      width: 100%;
+      height: 420px;
+      border: none;
+      padding: 18px;
+      box-sizing: border-box;
+      font: 14px/1.7 ui-monospace, Consolas, monospace;
+      resize: none;
+      outline: none
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font: 14px ui-monospace, Consolas, monospace
+    }
+
+    td,
+    th {
+      text-align: left;
+      padding: 10px 18px;
+      border-bottom: 1px solid #f0f2f5
+    }
+
+    th {
+      color: #94a3b8;
+      font-size: 12px
+    }
+
+    td.w {
+      color: #0369a1;
+      font-weight: 700
+    }
+  </style>
+</head>
+
+<body>
+  <header>
+    <h1>RISC-V Lab</h1>
+    <select id="port"></select>
+    <button onclick="loadPorts()">&#8635;</button>
+    <input id="baud" value="115200" size="7">
+    <button class="primary" onclick="run()">Run (assemble)</button>
+    <button onclick="sendUART()">Send to UART</button>
+    <button onclick="dlMem()">Download .mem</button>
+    <button onclick="dlHex()">Export .hex</button>
+    <button onclick="dlStream()">Download stream</button>
+  </header>
+  <div id="status"></div>
+  <main>
+    <div class="card">
+      <h2>ASSEMBLY</h2>
+      <textarea id="src" spellcheck="false"># RV32I assembly
+addi x1, x0, 5
+addi x2, x0, 10
+add  x3, x1, x2
+sw   x3, 0(x4)
+nop</textarea>
+    </div>
+    <div class="card">
+      <h2>MACHINE CODE</h2>
+      <table>
+        <thead>
+          <tr>
+            <th>ADDRESS</th>
+            <th>WORD</th>
+            <th>SOURCE</th>
+          </tr>
+        </thead>
+        <tbody id="out"></tbody>
+      </table>
+    </div>
+  </main>
+
+  <script>
+    const REG = {
+      zero: 0, ra: 1, sp: 2, gp: 3, tp: 4, t0: 5, t1: 6, t2: 7, s0: 8, fp: 8, s1: 9, a0: 10, a1: 11, a2: 12, a3: 13, a4: 14, a5: 15, a6: 16, a7: 17,
+      s2: 18, s3: 19, s4: 20, s5: 21, s6: 22, s7: 23, s8: 24, s9: 25, s10: 26, s11: 27, t3: 28, t4: 29, t5: 30, t6: 31
+    };
+    const R = { add: [0, 0], sub: [0x20, 0], sll: [0, 1], slt: [0, 2], sltu: [0, 3], xor: [0, 4], srl: [0, 5], sra: [0x20, 5], or: [0, 6], and: [0, 7] };
+    const I = { addi: 0, slti: 2, sltiu: 3, xori: 4, ori: 6, andi: 7 };
+    const SH = { slli: [0, 1], srli: [0, 5], srai: [0x20, 5] };
+    const L = { lb: 0, lh: 1, lw: 2, lbu: 4, lhu: 5 };
+    const S = { sb: 0, sh: 1, sw: 2 };
+    const B = { beq: 0, bne: 1, blt: 4, bge: 5, bltu: 6, bgeu: 7 };
+
+    let words = [];
+
+    function reg(t) {
+      t = t.trim();
+      if (/^x\d+$/.test(t)) { const n = +t.slice(1); if (n < 32) return n; }
+      if (t in REG) return REG[t];
+      throw "bad register: " + t;
+    }
+    function num(t) { const n = Number(t.trim()); if (isNaN(n)) throw "bad number: " + t; return n; }
+
+    function assemble(text) {
+      const lines = [], labels = {};
+      let pc = 0;
+      text.split("\n").forEach((raw, i) => {
+        let l = raw.replace(/#.*/, "").trim();
+        while (/^\w+:/.test(l)) { labels[l.match(/^(\w+):/)[1]] = pc; l = l.replace(/^\w+:\s*/, ""); }
+        if (l) { lines.push({ l, pc, ln: i + 1 }); pc += 4; }
+      });
+      return lines.map(o => {
+        try { return { pc: o.pc, src: o.l.replace(/\s+/g, " "), w: enc(o.l, o.pc, labels) >>> 0 }; }
+        catch (e) { throw `line ${o.ln}: ${e}`; }
+      });
+    }
+
+    function enc(line, pc, labels) {
+      const m = line.match(/^(\w+)\s*(.*)$/);
+      const op = m[1].toLowerCase();
+      const a = m[2] ? m[2].split(",").map(s => s.trim()) : [];
+      const tgt = t => (t in labels ? labels[t] - pc : num(t));
+      const mem = t => { const x = t.match(/^(.*)\((\w+)\)$/); if (!x) throw "bad mem operand: " + t; return [num(x[1] || "0"), reg(x[2])]; };
+
+      if (op === "nop") return 0x13;
+      if (op in R) { const [f7, f3] = R[op]; return (f7 << 25) | (reg(a[2]) << 20) | (reg(a[1]) << 15) | (f3 << 12) | (reg(a[0]) << 7) | 0x33; }
+      if (op in I) return ((num(a[2]) & 0xfff) << 20) | (reg(a[1]) << 15) | (I[op] << 12) | (reg(a[0]) << 7) | 0x13;
+      if (op in SH) { const [f7, f3] = SH[op]; return (f7 << 25) | ((num(a[2]) & 31) << 20) | (reg(a[1]) << 15) | (f3 << 12) | (reg(a[0]) << 7) | 0x13; }
+      if (op in L) { const [i, r] = mem(a[1]); return ((i & 0xfff) << 20) | (r << 15) | (L[op] << 12) | (reg(a[0]) << 7) | 0x03; }
+      if (op in S) { const [i, r] = mem(a[1]); return (((i >> 5) & 0x7f) << 25) | (reg(a[0]) << 20) | (r << 15) | (S[op] << 12) | ((i & 0x1f) << 7) | 0x23; }
+      if (op in B) {
+        const i = tgt(a[2]);
+        return (((i >> 12) & 1) << 31) | (((i >> 5) & 0x3f) << 25) | (reg(a[1]) << 20) | (reg(a[0]) << 15) | (B[op] << 12) | (((i >> 1) & 0xf) << 8) | (((i >> 11) & 1) << 7) | 0x63;
+      }
+      if (op === "lui" || op === "auipc") return ((num(a[1]) & 0xfffff) << 12) | (reg(a[0]) << 7) | (op === "lui" ? 0x37 : 0x17);
+      if (op === "jal") {
+        const rd = a.length === 1 ? 1 : reg(a[0]); const i = tgt(a[a.length - 1]);
+        return (((i >> 20) & 1) << 31) | (((i >> 1) & 0x3ff) << 21) | (((i >> 11) & 1) << 20) | (((i >> 12) & 0xff) << 12) | (rd << 7) | 0x6f;
+      }
+      if (op === "jalr") { const [i, r] = a[1].includes("(") ? mem(a[1]) : [num(a[2] || "0"), reg(a[1])]; return ((i & 0xfff) << 20) | (r << 15) | (reg(a[0]) << 7) | 0x67; }
+      throw "unsupported instruction: " + op;
+    }
+
+    const hex8 = w => w.toString(16).toUpperCase().padStart(8, "0");
+    const st = (msg, ok) => { const s = document.getElementById("status"); s.textContent = msg; s.className = ok ? "ok" : "err"; };
+
+    function run() {
+      try {
+        const r = assemble(document.getElementById("src").value);
+        words = r.map(x => x.w);
+        document.getElementById("out").innerHTML = r.map(x =>
+          `<tr><td>0x${x.pc.toString(16).toUpperCase().padStart(4, "0")}</td><td class="w">0x${hex8(x.w)}</td><td>${x.src}</td></tr>`).join("");
+        st(`Assembled: ${words.length} instructions, ${words.length * 4} bytes`, true);
+        return true;
+      } catch (e) { st("Error: " + e, false); return false; }
+    }
+
+    async function loadPorts() {
+      const p = await (await fetch("/ports")).json();
+      document.getElementById("port").innerHTML = p.map(x => `<option>${x}</option>`).join("") || "<option value=''>no ports</option>";
+    }
+
+    // Exact byte stream sent over UART: 4-byte word-count header, then each word. All LSB first.
+    function buildStream() {
+      if (!run()) return null;
+      if (words.length === 0) { st("Nothing to send: 0 instructions", false); return null; }
+      if (words.length > 64) { st("Program too big: " + words.length + " words, IMEM holds 64", false); return null; }
+      const bytes = [];
+      const n = words.length;
+      for (let i = 0; i < 4; i++) bytes.push((n >>> (8 * i)) & 0xff);
+      words.forEach(w => { for (let i = 0; i < 4; i++) bytes.push((w >>> (8 * i)) & 0xff); });
+      return bytes;
+    }
+
+    async function sendUART() {
+      const bytes = buildStream();
+      if (!bytes) return;
+      const port = document.getElementById("port").value;
+      if (!port) return st("No COM port selected", false);
+      try {
+        const r = await fetch("/send", {
+          method: "POST", headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ port, baud: document.getElementById("baud").value, bytes })
+        });
+        const j = await r.json();
+        j.ok ? st(`Sent ${j.sent} bytes to ${port}`, true) : st("UART error: " + j.error, false);
+      } catch (e) { st("Server error: " + e, false); }
+    }
+
+    function save(name, text) {
+      const a = document.createElement("a");
+      a.href = URL.createObjectURL(new Blob([text], { type: "text/plain" }));
+      a.download = name; a.click();
+    }
+    function dlMem() { if (run()) save("machinecode.mem", words.map(hex8).join("\n") + "\n"); }
+    function dlHex() { if (run()) save("program.hex", words.map(hex8).join("\n") + "\n"); }
+    // One byte per line, 2 hex digits: load in a testbench with $readmemh("uart_stream.hex", stream);
+    function dlStream() {
+      const b = buildStream();
+      if (b) save("uart_stream.hex", b.map(x => x.toString(16).toUpperCase().padStart(2, "0")).join("\n") + "\n");
+    }
+
+    loadPorts(); run();
+  </script>
+</body>
+
+</html>
